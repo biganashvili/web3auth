@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: web3auth-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: web3auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - web3auth-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: web3auth-backend
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/web3auth?sslmode=disable
+      - JWT_SECRET=your-secret-key-change-in-production
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - web3auth-network
+    # volumes:
+      # - ./backend:/app
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: web3auth-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    networks:
+      - web3auth-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  web3auth-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

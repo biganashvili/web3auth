@@ -1,0 +1,4 @@
+.DS_Store
+
+backend/go.sum
+frontend/node_modules/
